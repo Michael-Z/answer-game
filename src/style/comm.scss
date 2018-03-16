@@ -1,0 +1,63 @@
+@import "./var.scss";
+@import "reset.css";
+@import "peace.css";
+@import "ajax";
+
+.icon-success{
+    background-image:url("icon/success.svg");
+}
+
+.icon-error{
+    background-image:url("icon/error.svg");
+}
+
+.icon-warning{
+    background-image:url("icon/warning.svg");
+}
+
+.icon-info{
+    background-image:url("icon/info.svg");
+}
+
+.stage-container .stage-header{
+    padding:0;
+    .el-breadcrumb{
+        padding:12px 18px;
+        display:inline-block;
+        vertical-align:middle;
+        font-size:12px;
+    }
+    .el-menu{
+        display:inline-block;
+        vertical-align:middle;
+        .el-menu-item{
+            height:32px;
+            line-height:32px;
+        }
+    }
+    .toolbar{
+        padding:6px 18px;
+        clear:both;
+        border:1px solid #dedede;
+        background:#eeeeee;
+        position:relative;
+    }
+}
+.line{
+    text-align:center;
+}
+.el-table th.table-space-left, .el-table td.table-space-left{
+    padding-left:1em;
+}
+.cs-scroll + .el-pagination{
+    padding:10px 18px;
+    border-bottom:1px solid #dedede;
+    background:#eeeeee;
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+}
+.cs-btn-group{
+    margin-top:36px;
+}

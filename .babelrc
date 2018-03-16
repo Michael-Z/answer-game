@@ -1,0 +1,36 @@
+{
+  "presets": [
+    ["env", {
+      "modules": false
+    }],
+    "stage-2"
+  ],
+  "plugins": [
+    [
+      "component",
+      [
+        {
+          "libraryName": "mint-ui",
+          "style": true
+        },
+        {
+          "libraryName": "element-ui",
+          "styleLibrary": {
+            "name": "~src/style/theme-gray",
+            "base": false,
+            "path": "[module].scss",
+            "mixin": false
+          }
+        }
+      ]
+    ]
+  ],
+  "env": {
+    "production": {
+      "plugins": [
+        "transform-runtime",
+        "transform-remove-console"
+      ]
+    }
+  }
+}

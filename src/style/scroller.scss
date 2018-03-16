@@ -1,0 +1,46 @@
+@import "./var.scss";
+/**
+ * scroller 组件样式
+ */
+
+$C_PREFIX: z-scroller;
+$grey: #666666 !default;
+$grey-dark: #333333 !default;
+
+.#{$C_PREFIX} {
+  .#{$C_PREFIX}-box {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .#{$C_PREFIX}-bar {
+    position: absolute;
+    border-radius: 2px;
+    background-color: $grey;
+    opacity: .4;
+
+    z-index: 1;
+
+    &:hover{
+      background-color: $grey-dark;
+      opacity: 1;
+    }
+
+    &.#{$C_PREFIX}-x-bar {
+      bottom: 1px;
+      height: 5px;
+      &:hover{
+        height: 6px;
+      }
+    }
+
+    &.#{$C_PREFIX}-y-bar {
+      right: 1px;
+      width: 5px;
+      &:hover{
+        width: 6px;
+      }
+    }
+  }
+}

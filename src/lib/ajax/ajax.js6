@@ -1,0 +1,461 @@
+/*
+ * 适配jt-framework的ajax工具
+ */
+const loading = document.createElement('div');
+loading.innerHTML = '<div class="con"><div class="icon-box"></div><div class="message"></div></div>';
+const con = loading.querySelector('.message');
+const iconBox = loading.querySelector('.icon-box');
+const waitingHTML = '<div class="waiting"><div class="waiting-bounce1"></div><div class="waiting-bounce2"></div></div>';
+const iconHTML = '<div class="icon icon-{type}"></div>';
+
+loading.setAttribute('id', 'waitingBar');
+loading.className = 'slider-up';
+
+document.body.appendChild(loading);
+
+loading.info = function(xhr, info, closeDelay = 3000){
+    if(info.quiet || xhr.quiet){
+        return;
+    }
+    if(xhr.messager && info.type !== 'start'){
+        xhr.messager(info);
+        return;
+    }
+    if(loading.timer){
+        clearTimeout(loading.timer);
+    }
+    loading.closeDelay = closeDelay;
+    con.innerHTML = info.message || '';
+    loading.show(info.type || 'info');
+    if(loading.closeDelay){
+        loading.close();
+    }
+};
+loading.close = function(xhr){
+    loading.timer = setTimeout(function(){
+        loading.className = loading.className.replace('slider-down', 'slider-up');
+    }, loading.closeDelay);
+};
+loading.show = function(type){
+    loading.className = 'slider-down ' + type;
+    if(type === 'start'){
+        iconBox.innerHTML = waitingHTML;
+    }else{
+        iconBox.innerHTML = iconHTML.replace('{type}', type);
+    }
+};
+
+const promise = {
+    ajax: ajax,
+    loading: loading,
+    get(url, option){
+        return ajax('GET', url, option || {});
+    },
+    post(url, option){
+        return ajax('POST', url, option || {});
+    },
+    put(url, option){
+        return ajax('PUT', url, option || {});
+    },
+    del(url, option){
+        return ajax('DELETE', url, option || {});
+    },
+    /**
+     * 请求超时时间
+     */
+    ajaxTimeout: 0,
+    option: {
+        handler: {
+            start: function(xhr, q){
+                setTimeout(() =>{
+                    promise.loading.info(xhr, {message: '发送请求...', type: 'start'}, 0);
+                }, 0);
+            },
+            success: function(data, xhr, q){
+                const info = {
+                    success: true,
+                    code: xhr.data.code || 0,
+                    msg: xhr.data.msg,
+                    message: xhr.data.msg || '操作成功',
+                    type: 'success',
+                    quiet: xhr.quiet || false
+                };
+                promise.loading.info(xhr, info, 2000);
+            },
+            fail: function(err, xhr, q){
+                err.message = err.msg || '操作失败';
+                err.type = 'error';
+                promise.loading.info(xhr, err);
+            },
+            error: function(err, xhr, q){
+                err.message = err.msg || '请求失败';
+                err.type = 'error';
+                promise.loading.info(xhr, err);
+            },
+            ill: function(err, xhr, q){
+
+            },
+            done: function(xhr, q){
+                promise.loading.close(xhr);
+            }
+        },
+        convert: {
+            'json': function(xhr){
+                if(!xhr.responseText){
+                    return {
+                        success: false,
+                        code: 'noResponseContent',
+                        msg: '获得的内容为空'
+                    };
+                }
+                try{
+                    return JSON.parse(xhr.responseText);
+                }catch(e){
+                    return {
+                        success: false,
+                        code: 'parseError',
+                        msg: '解析数据出错'
+                    };
+                }
+            }
+        },
+        judge: {
+            '200': function(xhr){
+                return xhr.data.success? 'success': 'fail';
+            },
+            'other': function(xhr){
+                return 'error';
+            }
+        }
+    }
+};
+
+function httpBuilder(data, encode){
+    if(!isPlainObject(data)){
+        return data;
+    }
+
+    if(encode === 'json'){
+        return JSON.stringify(data);
+    }
+
+    const params = [], e = encodeURIComponent;
+    const loop = function(data, key){
+        if(typeof data === "object"){
+            let empty = true;
+            for(let k in data){
+                if(data.hasOwnProperty(k)){
+                    empty = false;
+                    loop(data[k], key + (key? '[' + e(k) + ']': e(k)));
+                }
+            }
+            if(empty){
+                params.push(key + '[]');
+            }
+        }else{
+            params.push(key + '=' + e(data));
+        }
+    };
+
+    loop(data, '');
+
+    return params.join('&');
+}
+
+function newXhr(){
+    let xhr;
+    if(window.XMLHttpRequest){
+        xhr = new XMLHttpRequest();
+    }else if(window.ActiveXObject){
+        try{
+            xhr = new ActiveXObject("Msxml2.XMLHTTP");
+        }catch(e){
+            try{
+                xhr = new ActiveXObject("Microsoft.XMLHTTP");
+            }catch(e){
+                xhr = null;
+            }
+        }
+    }
+    xhr.quiet = false;
+    return xhr;
+}
+
+function isFunction(obj){
+    return typeof obj === "function" && typeof obj.nodeType !== "number";
+}
+
+function isPlainObject(obj){
+    let proto, Ctor;
+    if(!obj || {}.toString.call(obj) !== "[object Object]"){
+        return false;
+    }
+
+    proto = Object.getPrototypeOf(obj);
+    if(!proto){
+        return true;
+    }
+
+    Ctor = {}.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+    return typeof Ctor === "function" && {}.hasOwnProperty.toString.call(Ctor) === {}.hasOwnProperty.toString.call(Object);
+}
+
+function merge(){
+    let options, name, src, copy, copyIsArray, clone,
+        target = arguments[0] || {},
+        i = 1,
+        length = arguments.length,
+        deep = false;
+
+    if(typeof target === "boolean"){
+        deep = target;
+        target = arguments[i] || {};
+        i++;
+    }
+    if(typeof target !== "object" && !isFunction(target)){
+        target = {};
+    }
+
+    if(i === length){
+        target = this;
+        i--;
+    }
+
+    for(; i < length; i++){
+        options = arguments[i];
+        // Only deal with non-null/undefined values
+        if(options != null){
+            // Extend the base object
+            for(name in options){
+                src = target[name];
+                copy = options[name];
+                // Prevent never-ending loop
+                if(target === copy){
+                    continue;
+                }
+                // Recurse if we're merging plain objects or arrays
+                if(deep && copy && (isPlainObject(copy) ||
+                        (copyIsArray = Array.isArray(copy)))){
+
+                    if(copyIsArray){
+                        copyIsArray = false;
+                        clone = src && Array.isArray(src)? src: [];
+
+                    }else{
+                        clone = src && isPlainObject(src)? src: {};
+                    }
+
+                    // Never move original objects, clone them
+                    target[name] = merge(deep, clone, copy);
+
+                    // Don't bring in undefined values
+                }else if(copy !== undefined){
+                    target[name] = copy;
+                }
+            }
+        }
+    }
+
+    return target;
+}
+
+function parseQueryString(query){
+    let result = {};
+    let temp = query.split('&');
+    for(let i = 0; i < temp.length; i++){
+        let t = temp[i].split('=');
+        result[t[0]] = t[1];
+    }
+    return result;
+}
+
+function genUrl(url, option){
+    if(option.path){
+        for(let i in option.path){
+            if(option.path.hasOwnProperty(i)){
+                url = url.replace(new RegExp(':' + i, 'g'), option.path[i]);
+            }
+        }
+    }
+
+    let lastPath = url.split('/').pop();
+    if(lastPath.slice(-1) === '.' || lastPath.indexOf('.') === -1){
+        url += '.json';
+    }
+
+    if(option.query){
+        let params = url.split('?', 2);
+        let data = params.length === 1? option.query: merge(parseQueryString(params[1]), option.query);
+        url = params[0] + '?' + httpBuilder(data, option.encode || 'form-data');
+    }
+
+    if(url.slice(1) !== '/'){
+        url = ((window.__ENV_CONFIG && window.__ENV_CONFIG.api_prefix) || '/') + url;
+    }
+
+    return url;
+}
+
+function triggerListen(status, xhr, listen, resolve, reject){
+    const handler = promise.option.handler, q = {"resolve": resolve, "reject": reject};
+    let fn;
+    if(status){
+        const data = status === 'success'? xhr.data.data: xhr.data;
+        xhr.page = xhr.data.page || null;
+        while(fn = listen[status].shift()){
+            if(fn(data, xhr, q) === false){
+                break;
+            }
+        }
+        if(status !== 'success'){
+            while(fn = listen['ill'].shift()){
+                if(fn(data, xhr, q) === false){
+                    break;
+                }
+            }
+        }
+        handler[status](data, xhr, q);
+    }
+
+    while(fn = listen['done'].shift()){
+        if(fn(xhr, q) === false){
+            break;
+        }
+    }
+    handler.done(xhr, q);
+}
+
+function send(pq, xhr, method, url, option){
+    method = method.toUpperCase();
+    let payload;
+    const data = merge({}, option.data), headers = merge({}, option.header);
+    if(xhr === null){
+        reject({errorMsg: 'NoXhr'});
+        return;
+    }
+
+    payload = null;
+    if(method !== 'GET'){
+        payload = httpBuilder(data, option.encode || 'form-data');
+    }
+
+    xhr.open(method, genUrl(url, option));
+
+    let contentType = option.encode === 'json'? 'application/json': 'application/x-www-form-urlencoded';
+    for(let h in headers){
+        if(headers.hasOwnProperty(h)){
+            if(h.toLowerCase() === 'content-type'){
+                contentType = headers[h];
+            }else{
+                xhr.setRequestHeader(h, headers[h]);
+            }
+        }
+    }
+    xhr.setRequestHeader('Content-type', contentType);
+
+    let timeout = promise.ajaxTimeout, tid;
+    if(timeout){
+        tid = setTimeout(function(){
+            xhr.abort();
+            xhr.errorMsg = 'TimeOutInRequest';
+            pq.reject();
+        }, timeout);
+    }
+
+    xhr.onreadystatechange = function(){
+        if(xhr.readyState === 4){
+            if(timeout){
+                clearTimeout(tid);
+            }
+            pq.resolve();
+        }
+    };
+
+    promise.option.handler.start(xhr);
+    xhr.send(payload);
+}
+
+function createLister(p, q, xhr){
+    const handler = promise.option.handler, listen = {};
+    for(let h in handler){
+        if(handler.hasOwnProperty(h)){
+            listen[h] = [];
+        }
+    }
+
+    return {
+        bind(h){
+            return (fn) =>{
+                if(p.status === 'pending' && h === 'start'){
+                    fn(xhr, q);
+                }
+                listen[h].push(fn);
+                if(p.status === 'onFulfilled'){
+                    q.resolve();
+                }else if(p.status === 'onRejected'){
+                    q.reject();
+                }
+                return p;
+            };
+        },
+        getListen(){
+            return listen;
+        }
+    }
+}
+
+function defineMessage(p, xhr){
+    return (fn) =>{
+        xhr.messager = fn;
+        return p;
+    };
+}
+
+/**
+ *
+ * @param method
+ * @param url
+ * @param option
+ * @returns {Promise}
+ */
+function ajax(method, url, option){
+    const xhr = newXhr();
+    const q = {};
+    const p = new Promise((resolve, reject) =>{
+        q.resolve = resolve;
+        q.reject = reject;
+    });
+
+    const listen = createLister(p, q, xhr);
+
+    p.status = 'pending';
+    p.start = listen.bind('start');
+    p.success = listen.bind('success');
+    p.fail = listen.bind('fail');
+    p.error = listen.bind('error');
+    p.done = listen.bind('done');
+    p.ill = listen.bind('ill');
+    p.message = defineMessage(p, xhr);
+    p.quiet = (quiet = true) =>{
+        xhr.quiet = quiet;
+    };
+
+    p.then((resolve, reject) =>{
+        p.status = 'onFulfilled';
+        xhr.data = promise.option.convert.json(xhr);
+        const status = (promise.option.judge[xhr.status] || promise.option.judge.other)(xhr);
+        triggerListen(status, xhr, listen.getListen(), resolve, reject);
+    });
+
+    p.catch((resolve, reject) =>{
+        p.status = 'onRejected';
+        xhr.data = {msg: xhr.statusText || xhr.errorMsg || 'unKnow', code: 'fail'};
+        triggerListen('fail', xhr, listen.getListen(), resolve, reject);
+    });
+
+    send(q, xhr, method, url, option);
+
+    return p;
+}
+
+export default promise;
